@@ -1,0 +1,14 @@
+<Project>
+  <!-- Main configuration -->
+  <PropertyGroup>
+    <LangVersion>13</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <Product>$(MSBuildProjectName)</Product>
+    <AssemblyTitle>$(MSBuildProjectName)</AssemblyTitle>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <!-- Substitute full path to project directory with ./, hiding it from debug symbols. -->
+    <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
+  </PropertyGroup>
+</Project>

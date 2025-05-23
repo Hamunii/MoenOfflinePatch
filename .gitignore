@@ -1,0 +1,19 @@
+# Remove everything from root level
+/*
+
+# Ignore always
+bin/
+obj/
+*.csproj.user
+
+# Add source files
+!/src/
+
+# Add root level files
+!/.gitignore
+!/Directory.Build.props
+!/Directory.Build.targets
+!/LICENSE
+!/NuGet.Config
+!/OfflinePatch.sln
+!/README.md

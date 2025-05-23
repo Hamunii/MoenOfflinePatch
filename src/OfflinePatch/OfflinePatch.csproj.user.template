@@ -1,0 +1,17 @@
+<Project>
+    <!-- Local Variables -->
+    <PropertyGroup>
+        <GameDirectory>%programfiles(x86)%/Steam/steamapps/common/Moen/</GameDirectory>
+        <PluginsDirectory>$(GameDirectory)BepInEx/plugins/</PluginsDirectory>
+    </PropertyGroup>
+
+    <!-- Game Directories - Do Not Modify -->
+    <PropertyGroup>
+        <ManagedDirectory>$(GameDirectory)Moen_Data/Managed/</ManagedDirectory>
+    </PropertyGroup>
+
+    <!-- Copy to Plugin Directory for Quicker Testing -->
+    <Target Name="CopyFiles" AfterTargets="PostBuildEvent">
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginsDirectory)"/>
+    </Target>
+</Project>
