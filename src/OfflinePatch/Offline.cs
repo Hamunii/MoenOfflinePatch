@@ -1,90 +1,36 @@
-using System;
 using System.Collections;
-using HarmonyLib;
-using MonoMod.RuntimeDetour;
+using MonoDetour;
 using UnityEngine;
 
 namespace OfflinePatch;
 
+[MonoDetourTargets(typeof(Menu_Splash))]
+[MonoDetourTargets(typeof(Menu_Connecting))]
+[MonoDetourTargets(typeof(ClientInfo))]
 static class Offline
 {
-    public static bool Init()
+    [MonoDetourHookInit]
+    public static void Init()
     {
-        try
-        {
-            var menuSplash_onWelcomeFailure = AccessTools.DeclaredMethod(
-                typeof(Menu_Splash),
-                nameof(Menu_Splash.onWelcomeFailure),
-                [typeof(string)]
-            );
+        On.Menu_Splash.onWelcomeFailure.Postfix(Postfix_onWelcomeFailure);
+        On.Menu_Connecting.OnLogin.Prefix(Prefix_OnLogin);
 
-            if (menuSplash_onWelcomeFailure is null)
-            {
-                Plugin.Log.LogError("Target method 'Menu_Splash.onWelcomeFailure' not found!");
-                return false;
-            }
-
-            Plugin.hooks.Add(
-                new Hook(menuSplash_onWelcomeFailure, Hook_Menu_Splash_onWelcomeFailure)
-            );
-
-            var menuConnecting_OnLogin = AccessTools.DeclaredMethod(
-                typeof(Menu_Connecting),
-                nameof(Menu_Connecting.OnLogin),
-                []
-            );
-
-            if (menuConnecting_OnLogin is null)
-            {
-                Plugin.Log.LogError("Target method 'Menu_Connecting.OnLogin' not found!");
-                return false;
-            }
-
-            Plugin.hooks.Add(new Hook(menuConnecting_OnLogin, Hook_Menu_Connecting_OnAwake));
-
-            var clientInfo_OnStartClient = AccessTools.DeclaredMethod(
-                typeof(ClientInfo),
-                nameof(ClientInfo.OnStartClient),
-                []
-            );
-
-            if (clientInfo_OnStartClient is null)
-            {
-                Plugin.Log.LogError("Target method 'ClientInfo.OnStartClient' not found!");
-                return false;
-            }
-
-            // TODO: this is hacky fix and not a proper one!
-            Plugin.hooks.Add(new Hook(clientInfo_OnStartClient, Hook_ClientInfo_OnStartClient));
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.LogError(ex);
-        }
-        return false;
+        // TODO: this is hacky fix and not a proper one!
+        On.ClientInfo.OnStartClient.Postfix(Postfix_OnStartClient);
     }
 
-    static void Hook_Menu_Splash_onWelcomeFailure(
-        Action<Menu_Splash, string> orig,
-        Menu_Splash self,
-        string response
-    )
+    static void Prefix_OnLogin(Menu_Connecting self)
     {
-        orig(self, response);
+        self.isTest = true;
+    }
+
+    static void Postfix_onWelcomeFailure(Menu_Splash self, ref string response)
+    {
         self.LoadGame();
     }
 
-    static void Hook_Menu_Connecting_OnAwake(Action<Menu_Connecting> orig, Menu_Connecting self)
+    static void Postfix_OnStartClient(ClientInfo self)
     {
-        self.isTest = true;
-        orig(self);
-    }
-
-    static void Hook_ClientInfo_OnStartClient(Action<ClientInfo> orig, ClientInfo self)
-    {
-        orig(self);
         self.StartCoroutine(WaitAndRespawn());
     }
 

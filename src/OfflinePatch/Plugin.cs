@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Logging;
+using MonoDetour;
+using MonoDetour.HookGen;
 using MonoMod.RuntimeDetour;
 using UnityEngine;
 
@@ -19,15 +22,19 @@ public class Plugin : BaseUnityPlugin
     private void Awake()
     {
         instance = this;
-        Log = base.Logger;
+        Log = Logger;
 
-        if (Offline.Init())
+        try
         {
-            Log.LogInfo($"{MyPluginInfo.PLUGIN_GUID} has loaded successfully!");
+            MonoDetourManager.InvokeHookInitializers();
         }
-        else
+        catch (Exception ex)
         {
+            Log.LogError(ex);
             Log.LogError($"{MyPluginInfo.PLUGIN_GUID} failed to load!");
+            return;
         }
+
+        Log.LogInfo($"{MyPluginInfo.PLUGIN_GUID} has loaded successfully!");
     }
 }
