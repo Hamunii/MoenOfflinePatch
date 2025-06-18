@@ -1,5 +1,6 @@
 using System.Collections;
 using MonoDetour;
+using MonoDetour.HookGen;
 using UnityEngine;
 
 namespace OfflinePatch;
@@ -9,7 +10,7 @@ namespace OfflinePatch;
 [MonoDetourTargets(typeof(ClientInfo))]
 static class Offline
 {
-    [MonoDetourHookInit]
+    [MonoDetourHookInitialize]
     public static void Init()
     {
         On.Menu_Splash.onWelcomeFailure.Postfix(Postfix_onWelcomeFailure);
