@@ -3,6 +3,7 @@ using System.Collections;
 using HarmonyLib;
 using MonoMod.RuntimeDetour;
 using MonoMod.Utils;
+using TMPro;
 using UnityEngine;
 
 namespace OfflinePatch;
@@ -10,6 +11,8 @@ namespace OfflinePatch;
 static class Offline
 {
     static bool initialized = false;
+    //? Used to tell the player that they are in offline mode
+    private static TextMeshProUGUI? dummyTextElement;
 
     public static bool Init()
     {
@@ -114,6 +117,9 @@ static class Offline
     {
         orig(self);
         self.StartCoroutine(WaitAndRespawn());
+
+        dummyTextElement = GameObject.Find("AllCanvas/Menu_GameUI/Chat/ChatHolder/Image/CoinText").GetComponent<TextMeshProUGUI>();
+        dummyTextElement.text = "OFFLINE MODE";
     }
 
     static bool Hook_ClientInfo_UpdatePlayerPeriodically_MoveNext(IEnumerator enumerator)
