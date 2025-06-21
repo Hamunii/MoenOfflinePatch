@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using HarmonyLib;
 using MonoMod.RuntimeDetour;
+using MonoMod.Utils;
 using UnityEngine;
 
 namespace OfflinePatch;
@@ -78,6 +79,27 @@ static class Offline
 
         // TODO: this is hacky fix and not a proper one!
         Plugin.hooks.Add(new Hook(clientInfo_OnStartClient, Hook_ClientInfo_OnStartClient));
+
+        var clientInfo_UpdatePlayerStatsPeriodically = AccessTools.DeclaredMethod(
+            typeof(ClientInfo),
+            nameof(ClientInfo.UpdatePlayerStatsPeriodically),
+            []
+        );
+
+        if (clientInfo_UpdatePlayerStatsPeriodically is null)
+        {
+            Plugin.Log.LogError(
+                "Target method 'ClientInfo.UpdatePlayerStatsPeriodically' not found!"
+            );
+        }
+
+        Plugin.hooks.Add(
+            new Hook(
+                clientInfo_UpdatePlayerStatsPeriodically.GetStateMachineTarget(),
+                Hook_ClientInfo_UpdatePlayerPeriodically_MoveNext
+            )
+        );
+
         orig(self, response);
         self.LoadGame();
     }
@@ -92,6 +114,12 @@ static class Offline
     {
         orig(self);
         self.StartCoroutine(WaitAndRespawn());
+    }
+
+    static bool Hook_ClientInfo_UpdatePlayerPeriodically_MoveNext(IEnumerator enumerator)
+    {
+        // Cancel original from spamming network errors
+        return false;
     }
 
     // The player spawns in a stuck state, replicate /stuck to get unstuck
