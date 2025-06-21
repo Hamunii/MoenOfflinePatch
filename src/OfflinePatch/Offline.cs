@@ -8,6 +8,8 @@ namespace OfflinePatch;
 
 static class Offline
 {
+    static bool initialized = false;
+
     public static bool Init()
     {
         try
@@ -28,35 +30,6 @@ static class Offline
                 new Hook(menuSplash_onWelcomeFailure, Hook_Menu_Splash_onWelcomeFailure)
             );
 
-            var menuConnecting_OnLogin = AccessTools.DeclaredMethod(
-                typeof(Menu_Connecting),
-                nameof(Menu_Connecting.OnLogin),
-                []
-            );
-
-            if (menuConnecting_OnLogin is null)
-            {
-                Plugin.Log.LogError("Target method 'Menu_Connecting.OnLogin' not found!");
-                return false;
-            }
-
-            Plugin.hooks.Add(new Hook(menuConnecting_OnLogin, Hook_Menu_Connecting_OnAwake));
-
-            var clientInfo_OnStartClient = AccessTools.DeclaredMethod(
-                typeof(ClientInfo),
-                nameof(ClientInfo.OnStartClient),
-                []
-            );
-
-            if (clientInfo_OnStartClient is null)
-            {
-                Plugin.Log.LogError("Target method 'ClientInfo.OnStartClient' not found!");
-                return false;
-            }
-
-            // TODO: this is hacky fix and not a proper one!
-            Plugin.hooks.Add(new Hook(clientInfo_OnStartClient, Hook_ClientInfo_OnStartClient));
-
             return true;
         }
         catch (Exception ex)
@@ -72,6 +45,39 @@ static class Offline
         string response
     )
     {
+        if (initialized)
+        {
+            orig(self, response);
+            return;
+        }
+
+        initialized = true;
+        var menuConnecting_OnLogin = AccessTools.DeclaredMethod(
+            typeof(Menu_Connecting),
+            nameof(Menu_Connecting.OnLogin),
+            []
+        );
+
+        if (menuConnecting_OnLogin is null)
+        {
+            Plugin.Log.LogError("Target method 'Menu_Connecting.OnLogin' not found!");
+        }
+
+        Plugin.hooks.Add(new Hook(menuConnecting_OnLogin, Hook_Menu_Connecting_OnAwake));
+
+        var clientInfo_OnStartClient = AccessTools.DeclaredMethod(
+            typeof(ClientInfo),
+            nameof(ClientInfo.OnStartClient),
+            []
+        );
+
+        if (clientInfo_OnStartClient is null)
+        {
+            Plugin.Log.LogError("Target method 'ClientInfo.OnStartClient' not found!");
+        }
+
+        // TODO: this is hacky fix and not a proper one!
+        Plugin.hooks.Add(new Hook(clientInfo_OnStartClient, Hook_ClientInfo_OnStartClient));
         orig(self, response);
         self.LoadGame();
     }
