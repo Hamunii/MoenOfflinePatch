@@ -12,3 +12,4 @@ This BepInEx 5 mod allows for playing Moen offline.
 6. Move all the files contained by `BepInEx_Patch.zip` into the game file location.
 7. Start the game.
 
+If you have any issues installing this patch or questions about it, feel free to ask in the [Moen Discord Server](https://discord.gg/DQT57QrGFJ).
