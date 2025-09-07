@@ -11,4 +11,16 @@
     <!-- Substitute full path to project directory with ./, hiding it from debug symbols. -->
     <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
   </PropertyGroup>
+
+  <!-- Custom props -->
+  <PropertyGroup>
+    <!-- Define a variable that points to this directory. -->
+    <SolutionRoot>$(MSBuildThisFileDirectory)</SolutionRoot>
+    <!-- Default values for game files. -->
+    <PathBeforeSteam Condition="'$([MSBuild]::IsOSUnixLike())' == 'true'">$(HOME)/.local/share/</PathBeforeSteam>
+    <PathBeforeSteam Condition="'$([MSBuild]::IsOSUnixLike())' != 'true'">$(MSBuildProgramFiles32)/</PathBeforeSteam>
+    <MoenGameRootDir Condition="$(MoenGameRootDir) == ''">$(PathBeforeSteam)Steam/steamapps/common/Moen/</MoenGameRootDir>
+    <MoenPluginsDir Condition="$(MoenPluginsDir) == ''">$(MoenGameRootDir)/BepInEx/plugins/</MoenPluginsDir>
+    <ManagedDir>$(MoenGameRootDir)/Moen_Data/Managed/</ManagedDir>
+  </PropertyGroup>
 </Project>

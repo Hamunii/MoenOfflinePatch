@@ -1,131 +1,94 @@
 using System;
 using System.Collections;
-using HarmonyLib;
-using MonoMod.RuntimeDetour;
-using MonoMod.Utils;
+using FishNet;
+using MonoDetour;
+using MonoDetour.DetourTypes;
+using MonoDetour.HookGen;
+using MonoDetour.Reflection.Unspeakable;
+using Steamworks;
 using TMPro;
 using UnityEngine;
 
 namespace OfflinePatch;
 
+[MonoDetourTargets(typeof(Menu_Splash))]
+[MonoDetourTargets(typeof(Menu_Connecting), GenerateControlFlowVariants = true)]
+[MonoDetourTargets(typeof(ClientInfo), GenerateControlFlowVariants = true)]
 static class Offline
 {
     static bool initialized = false;
+
     //? Used to tell the player that they are in offline mode
     private static TextMeshProUGUI? dummyTextElement;
 
-    public static bool Init()
+    [MonoDetourHookInitialize]
+    public static void Init()
     {
-        try
-        {
-            var menuSplash_onWelcomeFailure = AccessTools.DeclaredMethod(
-                typeof(Menu_Splash),
-                nameof(Menu_Splash.onWelcomeFailure),
-                [typeof(string)]
-            );
-
-            if (menuSplash_onWelcomeFailure is null)
-            {
-                Plugin.Log.LogError("Target method 'Menu_Splash.onWelcomeFailure' not found!");
-                return false;
-            }
-
-            Plugin.hooks.Add(
-                new Hook(menuSplash_onWelcomeFailure, Hook_Menu_Splash_onWelcomeFailure)
-            );
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.LogError(ex);
-        }
-        return false;
+        On.Menu_Splash.onWelcomeFailure.Postfix(Postfix_Menu_Splash_onWelcomeFailure);
     }
 
-    static void Hook_Menu_Splash_onWelcomeFailure(
-        Action<Menu_Splash, string> orig,
-        Menu_Splash self,
-        string response
-    )
+    static void Postfix_Menu_Splash_onWelcomeFailure(Menu_Splash self, ref string response)
     {
         if (initialized)
-        {
-            orig(self, response);
             return;
-        }
 
         initialized = true;
-        var menuConnecting_OnLogin = AccessTools.DeclaredMethod(
-            typeof(Menu_Connecting),
-            nameof(Menu_Connecting.OnLogin),
-            []
-        );
 
-        if (menuConnecting_OnLogin is null)
+        if (!SteamAPI.IsSteamRunning())
         {
-            Plugin.Log.LogError("Target method 'Menu_Connecting.OnLogin' not found!");
+            Plugin.Log.LogInfo("Steam is not running, logging in as Editor.");
+            On.Menu_Connecting.OnLogin.Prefix(Prefix_Menu_Connecting_OnLogin);
         }
-
-        Plugin.hooks.Add(new Hook(menuConnecting_OnLogin, Hook_Menu_Connecting_OnAwake));
-
-        var clientInfo_OnStartClient = AccessTools.DeclaredMethod(
-            typeof(ClientInfo),
-            nameof(ClientInfo.OnStartClient),
-            []
-        );
-
-        if (clientInfo_OnStartClient is null)
+        else
         {
-            Plugin.Log.LogError("Target method 'ClientInfo.OnStartClient' not found!");
+            Plugin.Log.LogInfo("Steam is running, logging in using Steam name.");
+            On.Menu_Connecting.SendTicketToServer.ControlFlowPrefix(
+                Prefix_Menu_Connecting_SendTicketToServer
+            );
         }
 
         // TODO: this is hacky fix and not a proper one!
-        Plugin.hooks.Add(new Hook(clientInfo_OnStartClient, Hook_ClientInfo_OnStartClient));
+        On.ClientInfo.OnStartClient.Postfix(Postfix_ClientInfo_OnStartClient);
 
-        var clientInfo_UpdatePlayerStatsPeriodically = AccessTools.DeclaredMethod(
-            typeof(ClientInfo),
-            nameof(ClientInfo.UpdatePlayerStatsPeriodically),
-            []
+        On.ClientInfo.UpdatePlayerStatsPeriodically.ControlFlowPrefixMoveNext(
+            Prefix_ClientInfo_UpdatePlayerStatsPeriodically_MoveNext
         );
 
-        if (clientInfo_UpdatePlayerStatsPeriodically is null)
-        {
-            Plugin.Log.LogError(
-                "Target method 'ClientInfo.UpdatePlayerStatsPeriodically' not found!"
-            );
-        }
-
-        Plugin.hooks.Add(
-            new Hook(
-                clientInfo_UpdatePlayerStatsPeriodically.GetStateMachineTarget(),
-                Hook_ClientInfo_UpdatePlayerPeriodically_MoveNext
-            )
-        );
-
-        orig(self, response);
         self.LoadGame();
     }
 
-    static void Hook_Menu_Connecting_OnAwake(Action<Menu_Connecting> orig, Menu_Connecting self)
+    private static ReturnFlow Prefix_Menu_Connecting_SendTicketToServer(
+        Menu_Connecting self,
+        ref string authTicket
+    )
+    {
+        PlayerData.user = new UserData
+        {
+            displayName = SteamFriends.GetPersonaName(),
+            steamID = "000000000",
+            username = SteamFriends.GetPersonaName(),
+        };
+
+        InstanceFinder.NetworkManager.ClientManager.StartConnection();
+        return ReturnFlow.SkipOriginal;
+    }
+
+    static void Prefix_Menu_Connecting_OnLogin(Menu_Connecting self)
     {
         self.isTest = true;
-        orig(self);
     }
 
-    static void Hook_ClientInfo_OnStartClient(Action<ClientInfo> orig, ClientInfo self)
+    static void Postfix_ClientInfo_OnStartClient(ClientInfo self)
     {
-        orig(self);
+        if (!self.IsOwner)
+            return;
+
         self.StartCoroutine(WaitAndRespawn());
 
-        dummyTextElement = GameObject.Find("AllCanvas/Menu_GameUI/Chat/ChatHolder/Image/CoinText").GetComponent<TextMeshProUGUI>();
+        dummyTextElement = GameObject
+            .Find("AllCanvas/Menu_GameUI/Chat/ChatHolder/Image/CoinText")
+            .GetComponent<TextMeshProUGUI>();
         dummyTextElement.text = "OFFLINE MODE";
-    }
-
-    static bool Hook_ClientInfo_UpdatePlayerPeriodically_MoveNext(IEnumerator enumerator)
-    {
-        // Cancel original from spamming network errors
-        return false;
     }
 
     // The player spawns in a stuck state, replicate /stuck to get unstuck
@@ -138,5 +101,15 @@ static class Offline
 
         var chatSystem = ChatSystem.instance;
         chatSystem.StartCoroutine(chatSystem.Respawn());
+    }
+
+    private static ReturnFlow Prefix_ClientInfo_UpdatePlayerStatsPeriodically_MoveNext(
+        SpeakableEnumerator<object, ClientInfo> self,
+        ref bool continueEnumeration
+    )
+    {
+        // Cancel original from spamming network errors
+        continueEnumeration = false;
+        return ReturnFlow.SkipOriginal;
     }
 }

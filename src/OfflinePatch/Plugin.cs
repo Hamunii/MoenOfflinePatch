@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+using System;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
-using MonoMod.RuntimeDetour;
-using UnityEngine;
+using MonoDetour;
 
 namespace OfflinePatch;
 
@@ -10,24 +10,22 @@ namespace OfflinePatch;
 public class Plugin : BaseUnityPlugin
 {
     internal static ManualLogSource Log { get; private set; } = null!;
-    internal static Plugin instance = null!;
-    internal static List<IDetour> hooks = [];
-    internal static Material slopeMaterial = null!;
-    internal static Shader slopeShader = null!;
-    internal static AssetBundle assets = null!;
 
     private void Awake()
     {
-        instance = this;
-        Log = base.Logger;
+        Log = Logger;
 
-        if (Offline.Init())
+        try
         {
-            Log.LogInfo($"{MyPluginInfo.PLUGIN_GUID} has loaded successfully!");
+            MonoDetourManager.InvokeHookInitializers(Assembly.GetExecutingAssembly());
         }
-        else
+        catch (Exception ex)
         {
+            Log.LogError(ex);
             Log.LogError($"{MyPluginInfo.PLUGIN_GUID} failed to load!");
+            return;
         }
+
+        Log.LogInfo($"{MyPluginInfo.PLUGIN_GUID} has loaded successfully!");
     }
 }

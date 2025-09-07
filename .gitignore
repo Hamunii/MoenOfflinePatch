@@ -10,6 +10,7 @@ obj/
 !/src/
 
 # Add root level files
+!/.csharpierignore
 !/.gitignore
 !/Directory.Build.props
 !/Directory.Build.targets

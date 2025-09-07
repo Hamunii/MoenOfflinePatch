@@ -1,17 +1,16 @@
 <Project>
-    <!-- Local Variables -->
-    <PropertyGroup>
-        <GameDirectory>%programfiles(x86)%/Steam/steamapps/common/Moen/</GameDirectory>
-        <PluginsDirectory>$(GameDirectory)BepInEx/plugins/</PluginsDirectory>
-    </PropertyGroup>
 
-    <!-- Game Directories - Do Not Modify -->
-    <PropertyGroup>
-        <ManagedDirectory>$(GameDirectory)Moen_Data/Managed/</ManagedDirectory>
-    </PropertyGroup>
+  <PropertyGroup>
+    <!-- Set if the default steam game install directory doesn't work. -->
+    <!-- <MoenGameRootDir></MoenGameRootDir> -->
+    <!-- Set if your BepInEx/plugins/ directory isn't in the game files. -->
+    <!-- <MoenPluginsDir></MoenPluginsDir> -->
+  </PropertyGroup>
 
-    <!-- Copy to Plugin Directory for Quicker Testing -->
-    <Target Name="CopyFiles" AfterTargets="PostBuildEvent">
-        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginsDirectory)"/>
-    </Target>
+  <Target Name="DeployFiles" AfterTargets="Build">
+    <Message Text="Deploy → $(MoenPluginsDir)$(AssemblyName).dll" Importance="High" />
+    <Error Text="Plugins directory '$(MoenPluginsDir)' doesn't exist!" Condition="!Exists('$(MoenPluginsDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MoenPluginsDir)" />
+  </Target>
+
 </Project>
