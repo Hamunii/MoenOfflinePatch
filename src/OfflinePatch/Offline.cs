@@ -65,7 +65,7 @@ static class Offline
         PlayerData.user = new UserData
         {
             displayName = SteamFriends.GetPersonaName(),
-            steamID = "000000000",
+            steamID = SteamUser.GetSteamID().ToString(),
             username = SteamFriends.GetPersonaName(),
         };
 
